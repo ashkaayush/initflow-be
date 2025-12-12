@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:3000"
     
-    # AI (optional for now)
-    openai_api_key: str = ""
-    anthropic_api_key: str = ""
+    # AI Configuration
+    google_api_key: str = ""
+    ollama_host: str = "http://localhost:11434"
     
     # E2B
     e2b_api_key: str = ""

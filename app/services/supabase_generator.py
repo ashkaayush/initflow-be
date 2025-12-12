@@ -29,15 +29,14 @@ class SupabaseBackendGenerator:
         # Generate real-time subscriptions
         realtime_setup = self._generate_realtime_setup(analysis, project_name)
         
-        # Generate edge functions
-        edge_functions = self._generate_edge_functions(analysis, project_name)
+        # Generate real-time subscriptions
+        realtime_setup = self._generate_realtime_setup(analysis, project_name)
         
         return {
             "database_schema": database_schema,
             "api_endpoints": api_endpoints,
             "auth_setup": auth_setup,
-            "realtime_setup": realtime_setup,
-            "edge_functions": edge_functions
+            "realtime_setup": realtime_setup
         }
     
     def _generate_database_schema(self, analysis: Dict, project_name: str) -> str:
@@ -496,184 +495,7 @@ export const {Entity}List = () => {
         
         return realtime_doc
     
-    def _generate_edge_functions(self, analysis: Dict, project_name: str) -> str:
-        """Generate Supabase Edge Functions for serverless backend logic"""
-        features = analysis.get("features", [])
-        
-        if not any(feature in ["api", "payment", "notifications", "analytics"] for feature in features):
-            return ""
-        
-        edge_functions = f"""# {project_name} Edge Functions
 
-## Setup Edge Functions
-
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Initialize functions
-supabase functions new hello-world
-```
-
-## Example Edge Functions
-
-### 1. API Endpoint Function
-
-```typescript
-// supabase/functions/api-handler/index.ts
-import {{ serve }} from "https://deno.land/std@0.168.0/http/server.ts"
-import {{ createClient }} from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {{
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}}
-
-serve(async (req) => {{
-  if (req.method === 'OPTIONS') {{
-    return new Response('ok', {{ headers: corsHeaders }})
-  }}
-
-  try {{
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {{ global: {{ headers: {{ Authorization: req.headers.get('Authorization')! }} }} }}
-    )
-
-    const {{ data: {{ user }} }} = await supabaseClient.auth.getUser()
-    
-    if (!user) {{
-      return new Response(
-        JSON.stringify({{ error: 'Unauthorized' }}),
-        {{ status: 401, headers: {{ ...corsHeaders, 'Content-Type': 'application/json' }} }}
-      )
-    }}
-
-    // Your API logic here
-    const result = {{ message: 'Hello from Edge Function!', user: user.id }}
-
-    return new Response(
-      JSON.stringify(result),
-      {{ headers: {{ ...corsHeaders, 'Content-Type': 'application/json' }} }}
-    )
-  }} catch (error) {{
-    return new Response(
-      JSON.stringify({{ error: error.message }}),
-      {{ status: 500, headers: {{ ...corsHeaders, 'Content-Type': 'application/json' }} }}
-    )
-  }}
-}})
-```
-
-"""
-        
-        if "payment" in features:
-            edge_functions += """### 2. Payment Processing Function
-
-```typescript
-// supabase/functions/process-payment/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2022-08-01',
-})
-
-serve(async (req) => {
-  try {
-    const { amount, currency = 'usd', payment_method } = await req.json()
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount * 100, // Convert to cents
-      currency,
-      payment_method,
-      confirm: true,
-      return_url: 'https://your-app.com/payment-success',
-    })
-
-    return new Response(
-      JSON.stringify({ success: true, payment_intent: paymentIntent }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-})
-```
-
-"""
-        
-        if "notifications" in features:
-            edge_functions += """### 3. Push Notifications Function
-
-```typescript
-// supabase/functions/send-notification/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-serve(async (req) => {
-  try {
-    const { title, body, token } = await req.json()
-    
-    const notification = {
-      to: token,
-      sound: 'default',
-      title,
-      body,
-      data: { someData: 'goes here' },
-    }
-
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(notification),
-    })
-
-    const result = await response.json()
-    
-    return new Response(
-      JSON.stringify({ success: true, result }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-})
-```
-
-"""
-        
-        edge_functions += """## Deploy Functions
-
-```bash
-# Deploy all functions
-supabase functions deploy
-
-# Deploy specific function
-supabase functions deploy hello-world
-```
-
-## Call Functions from React Native
-
-```javascript
-// Call edge function
-const { data, error } = await supabase.functions.invoke('hello-world', {
-  body: { name: 'Functions' }
-})
-```
-"""
-        
-        return edge_functions
 
 
 # Singleton instance

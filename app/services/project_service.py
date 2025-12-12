@@ -84,7 +84,6 @@ class ProjectService:
                 specs["api_endpoints"] = backend_specs.get("api_endpoints", "")
                 specs["auth_setup"] = backend_specs.get("auth_setup", "")
                 specs["realtime_setup"] = backend_specs.get("realtime_setup", "")
-                specs["edge_functions"] = backend_specs.get("edge_functions", "")
         
         # Create spec files with generated content
         for spec_type, content in specs.items():
@@ -198,3 +197,6 @@ Each user story should have clear acceptance criteria...
 
 # Singleton instance
 project_service = ProjectService()
+
+
+i can see you are using together ai in the ai service update use  check the web,also fr the uspbase generator remove payment i  think its not needed, remove edge_functions
