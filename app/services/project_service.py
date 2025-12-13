@@ -199,4 +199,3 @@ Each user story should have clear acceptance criteria...
 project_service = ProjectService()
 
 
-i can see you are using together ai in the ai service update use  check the web,also fr the uspbase generator remove payment i  think its not needed, remove edge_functions

@@ -22,12 +22,12 @@ class AIService:
                 host=settings.ollama_host
             ),
             "pro": Gemini(
-                model="gemini-2.0-flash-exp", 
+                model="gemini-2.5", 
                 max_tokens=4096,
                 api_key=settings.google_api_key
             ),
             "premium": Gemini(
-                model="gemini-2.0-flash-exp", 
+                model="gemini-2.5", 
                 max_tokens=8192,
                 api_key=settings.google_api_key
             )
@@ -169,8 +169,8 @@ Create a React Native component that implements the requested functionality.
 Consider the user's tier ({user_tier}) when determining the complexity and features to include.
 
 For free tier: Create basic, functional components
-For pro tier: Add TypeScript, animations, and advanced features
-For premium tier: Include comprehensive TypeScript, custom hooks, animations, and accessibility features
+For pro tier: Add JavaScrip, animations, and advanced features
+For premium tier: Include comprehensive JavaScript, custom hooks, animations, and accessibility features
 
 Provide the component code and any necessary supporting files."""
         
