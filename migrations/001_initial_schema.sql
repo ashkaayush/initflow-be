@@ -104,22 +104,23 @@ CREATE TABLE memory_items (
 
 -- Create index for vector similarity search
 CREATE INDEX ON memory_items USING ivfflat (embedding vector_cosine_ops);
+WITH (lists = 100);
 
 -- Marketplace components table (disabled for now)
--- CREATE TABLE marketplace_components (
---     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
---     name VARCHAR(255) NOT NULL,
---     description TEXT,
---     category VARCHAR(100) NOT NULL,
---     tags TEXT[],
---     preview_url VARCHAR(500),
---     spec_template JSONB NOT NULL,
---     code_template JSONB NOT NULL,
---     dependencies TEXT[],
---     downloads INTEGER DEFAULT 0,
---     rating DECIMAL(3,2) DEFAULT 0.0,
---     created_at TIMESTAMP DEFAULT NOW()
--- );
+CREATE TABLE marketplace_components (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100) NOT NULL,
+    tags TEXT[],
+    preview_url VARCHAR(500),
+    spec_template JSONB NOT NULL,
+    code_template JSONB NOT NULL,
+    dependencies TEXT[],
+    downloads INTEGER DEFAULT 0,
+    rating DECIMAL(3,2) DEFAULT 0.0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
 -- Build jobs table
 CREATE TABLE build_jobs (
@@ -143,6 +144,15 @@ CREATE TABLE chat_messages (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- PROJECT MEMORY
+CREATE TABLE project_memory (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_spec_files_project_id ON spec_files(project_id);
@@ -151,6 +161,7 @@ CREATE INDEX idx_code_changes_task_id ON code_changes(task_id);
 CREATE INDEX idx_sandboxes_project_id ON sandboxes(project_id);
 CREATE INDEX idx_memory_items_project_id ON memory_items(project_id);
 CREATE INDEX idx_chat_messages_project_id ON chat_messages(project_id);
+CREATE INDEX idx_project_memory_project_id ON project_memory(project_id);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -168,6 +179,19 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_spec_files_updated_at BEFORE UPDATE ON spec_files
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_code_changes_updated_at BEFORE UPDATE ON code_changes
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_sandboxes_updated_at BEFORE UPDATE ON sandboxes
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();    
+
+
 -- Row Level Security (RLS) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
@@ -177,6 +201,7 @@ ALTER TABLE code_changes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sandboxes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memory_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_memory ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see their own data
 CREATE POLICY users_select_own ON users FOR SELECT USING (auth.uid() = id);
@@ -198,3 +223,40 @@ CREATE POLICY spec_files_update_own ON spec_files FOR UPDATE
 
 -- Similar policies for other tables...
 -- (Add more RLS policies as needed for production)
+-- TASKS RLS
+CREATE POLICY tasks_select_own ON tasks FOR SELECT 
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = tasks.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY tasks_insert_own ON tasks FOR INSERT 
+WITH CHECK (EXISTS (SELECT 1 FROM projects WHERE projects.id = tasks.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY tasks_update_own ON tasks FOR UPDATE 
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = tasks.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY tasks_delete_own ON tasks FOR DELETE 
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = tasks.project_id AND projects.user_id = auth.uid()));
+
+-- CODE CHANGES RLS
+CREATE POLICY code_changes_select_own ON code_changes FOR SELECT
+USING (EXISTS (SELECT 1 FROM tasks JOIN projects p ON tasks.project_id = p.id WHERE tasks.id = code_changes.task_id AND p.user_id = auth.uid()));
+CREATE POLICY code_changes_insert_own ON code_changes FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM tasks JOIN projects p ON tasks.project_id = p.id WHERE tasks.id = code_changes.task_id AND p.user_id = auth.uid()));
+
+-- SANDBOXES RLS
+CREATE POLICY sandboxes_select_own ON sandboxes FOR SELECT
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = sandboxes.project_id AND projects.user_id = auth.uid()));
+
+-- MEMORY ITEMS RLS
+CREATE POLICY memory_items_select_own ON memory_items FOR SELECT
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = memory_items.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY memory_items_insert_own ON memory_items FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM projects WHERE projects.id = memory_items.project_id AND projects.user_id = auth.uid()));
+
+-- CHAT MESSAGES RLS
+CREATE POLICY chat_messages_select_own ON chat_messages FOR SELECT
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = chat_messages.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY chat_messages_insert_own ON chat_messages FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM projects WHERE projects.id = chat_messages.project_id AND projects.user_id = auth.uid()));
+
+-- PROJECT MEMORY RLS
+CREATE POLICY project_memory_select_own ON project_memory FOR SELECT
+USING (EXISTS (SELECT 1 FROM projects WHERE projects.id = project_memory.project_id AND projects.user_id = auth.uid()));
+CREATE POLICY project_memory_insert_own ON project_memory FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM projects WHERE projects.id = project_memory.project_id AND projects.user_id = auth.uid()));gcd 
